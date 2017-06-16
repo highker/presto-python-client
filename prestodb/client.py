@@ -43,6 +43,7 @@ import requests
 
 from prestodb import constants
 from prestodb import exceptions
+import prestodb.redirect
 
 
 __all__ = ['PrestoQuery', 'PrestoRequest']
@@ -200,6 +201,7 @@ class PrestoRequest(object):
         http_headers=None,  # type: Optional[Dict[Text, Text]]
         http_scheme=constants.HTTP,  # type: Text
         auth=constants.DEFAULT_AUTH,  # type: Optional[Any]
+        redirect_handler=prestodb.redirect.GatewayRedirectHandler(),
         max_attempts=MAX_ATTEMPTS,  # type: int
         request_timeout=constants.DEFAULT_REQUEST_TIMEOUT,  # type: Union[float, Tuple[float, float]]
         handle_retry=exceptions.RetryWithExponentialBackoff(),
@@ -223,8 +225,9 @@ class PrestoRequest(object):
         if self._auth:
             if http_scheme == constants.HTTP:
                 raise ValueError('cannot use authentication with HTTP')
-            self._auth.set_session(self._session)
+            self._auth.set_http_session(self._http_session)
 
+        self._redirect_handler = redirect_handler
         self._request_timeout = request_timeout
         self._handle_retry = handle_retry
         self.max_attempts = max_attempts
@@ -300,14 +303,34 @@ class PrestoRequest(object):
         # type: () -> Text
         return self._next_uri
 
-    def post(self, sql):
-        return self._post(
+    def post(self, sql, allow_redirect=False):
+        data = sql.encode('utf-8')
+        http_headers = self.http_headers
+
+        http_response = self._post(
             self.statement_url,
-            data=sql.encode('utf-8'),
-            headers=self.http_headers,
+            data=data,
+            headers=http_headers,
             timeout=self._request_timeout,
             proxies=PROXIES,
         )
+        if allow_redirect and self._redirect_handler is not None:
+            while http_response.is_redirect:
+                location = http_response.headers['Location']
+                url = self._redirect_handler.handle(location)
+                logger.info('redirect {} from {} to {}'.format(
+                    http_response.status_code,
+                    location,
+                    url,
+                ))
+                http_response = self._post(
+                    url,
+                    data=data,
+                    headers=http_headers,
+                    timeout=self._request_timeout,
+                    proxies=PROXIES,
+                )
+        return http_response
 
     def get(self, url):
         return self._get(
