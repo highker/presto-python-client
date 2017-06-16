@@ -222,7 +222,7 @@ class PrestoRequest(object):
         if self._auth:
             if http_scheme == constants.HTTP:
                 raise ValueError('cannot use authentication with HTTP')
-            self._auth.set_session(self._session)
+            self._auth.set_http_session(self._http_session)
 
         self._request_timeout = request_timeout
         self._handle_retry = handle_retry
