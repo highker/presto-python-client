@@ -303,7 +303,7 @@ class PrestoRequest(object):
         # type: () -> Text
         return self._next_uri
 
-    def post(self, sql, allow_redirect=False):
+    def post(self, sql, allow_redirect=True):
         data = sql.encode('utf-8')
         http_headers = self.http_headers
 
@@ -315,7 +315,7 @@ class PrestoRequest(object):
             proxies=PROXIES,
         )
         if allow_redirect and self._redirect_handler is not None:
-            while http_response.is_redirect:
+            while http_response is not None and http_response.is_redirect:
                 location = http_response.headers['Location']
                 url = self._redirect_handler.handle(location)
                 logger.info('redirect {} from {} to {}'.format(
