@@ -14,4 +14,4 @@ from . import dbapi
 from . import client
 from . import constants
 
-__version__ = '0.2.5'
+__version__ = '0.2.6'
