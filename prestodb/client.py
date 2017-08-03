@@ -311,6 +311,7 @@ class PrestoRequest(object):
             self.statement_url,
             data=data,
             headers=http_headers,
+            allow_redirects=False,
             timeout=self._request_timeout,
             proxies=PROXIES,
         )
@@ -327,6 +328,7 @@ class PrestoRequest(object):
                     url,
                     data=data,
                     headers=http_headers,
+                    allow_redirects=False,
                     timeout=self._request_timeout,
                     proxies=PROXIES,
                 )
