@@ -549,6 +549,7 @@ def test_503_error_retry(monkeypatch):
 
 class FakeGatewayResponse(object):
     def __init__(self, http_response, nb_redirects=1):
+        self.__name__ = 'FakeGatewayResponse'
         self.http_response = http_response
         self.nb_redirects = nb_redirects
         self.count = 0
