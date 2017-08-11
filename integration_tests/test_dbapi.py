@@ -115,6 +115,12 @@ def test_cancel_query(presto_connection):
         cur.fetchall()
     assert 'Query was canceled' in str(cancel_error.value)
 
+    cur = presto_connection.cursor()
+    cur.cancel()
+    with pytest.raises(prestodb.exceptions.PrestoUserError) as cancel_error:
+        cur.execute('select * from tpch.sf1.customer')
+    assert 'Query has finished' in str(cancel_error.value)
+
 
 def test_session_properties(run_presto):
     _, host, port = run_presto

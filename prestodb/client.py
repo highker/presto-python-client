@@ -457,6 +457,7 @@ class PrestoQuery(object):
         self._finished = False
         self._request = request
         self._sql = sql
+        self._result = PrestoResult(self)
 
     @property
     def columns(self):
@@ -465,6 +466,10 @@ class PrestoQuery(object):
     @property
     def stats(self):
         return self._stats
+
+    @property
+    def result(self):
+        return self._result
 
     def execute(self):
         # type: () -> PrestoResult
@@ -475,6 +480,8 @@ class PrestoQuery(object):
         track the rows returned by the query. To fetch all rows,
         call fetch() until is_finished is true.
         """
+        if self.is_finished():
+            raise exceptions.PrestoUserError("Query has finished")
 
         response = self._request.post(self._sql)
         status = self._request.process(response)
@@ -483,8 +490,8 @@ class PrestoQuery(object):
         self._stats.update(status.stats)
         if status.next_uri is None:
             self._finished = True
-        self.result = PrestoResult(self, status.rows)
-        return self.result
+        self._result = PrestoResult(self, status.rows)
+        return self._result
 
     def fetch(self):
         # type: () -> List[List[Any]]
@@ -504,6 +511,11 @@ class PrestoQuery(object):
         # type: None -> None
         if self.is_finished():
             return
+
+        self._finished = True
+        if self._request.next_uri is None:
+            return
+
         response = self._request.delete(self._request.next_uri)
         if response.status_code == requests.codes.no_content:
             return
